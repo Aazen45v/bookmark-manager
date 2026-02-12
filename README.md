@@ -1,16 +1,17 @@
 # 🔖 Bookmark Manager
 
-A simple, real-time bookmark manager built with Next.js, Supabase, and Tailwind CSS.
+A modern, real-time bookmark manager built with Next.js 15, Supabase, and Tailwind CSS.
 
-![Bookmark Manager Demo](https://via.placeholder.com/800x400?text=Bookmark+Manager+Demo+Screenshot)
+![Bookmark Manager Demo](docs/demo-screenshot.png)
 
 ## ✨ Features
 
-- 🔐 **Google Authentication only** — No email/password required
+- 🔐 **Google Authentication only** — Secure, passwordless login
 - 📚 **Add & Delete bookmarks** — Store URLs with custom titles
-- 🔒 **Private by default** — Each user sees only their own bookmarks
-- ⚡ **Real-time sync** — Changes appear instantly across all tabs
-- 🎨 **Clean UI** — Built with Tailwind CSS
+- 🔒 **Private by default** — Row Level Security (RLS) ensures data isolation
+- ⚡ **Real-time sync** — Changes appear instantly across all devices/tabs
+- 🎨 **Modern UI** — Beautiful gradient design with responsive layout
+- 🚀 **Production ready** — Deployed on Vercel with automatic deployments
 
 ## 🚀 Live Demo
 
@@ -18,38 +19,52 @@ A simple, real-time bookmark manager built with Next.js, Supabase, and Tailwind 
 
 ## 🛠️ Tech Stack
 
-| Technology | Purpose |
-|------------|---------|
-| **Next.js 15** | React framework with App Router |
-| **Supabase** | Auth, Database, Realtime subscriptions |
-| **Tailwind CSS** | Styling |
-| **Vercel** | Deployment |
+| Technology | Version | Purpose |
+|------------|---------|---------|
+| **Next.js** | 15 | React framework with App Router, SSR support |
+| **React** | 19 | UI library |
+| **Supabase** | Latest | Auth, Database, Realtime subscriptions |
+| **Tailwind CSS** | Latest | Utility-first styling |
+| **Vercel** | Latest | Deployment and CI/CD |
 
 ## 📸 Demo Screenshots
 
-### Page
-![ Sign InSign In](https://via.placeholder.com/800x500?text=Sign+In+with+Google)
+### Login Page
+![Login Page](docs/login-page.png)
+*Professional gradient design with Google Sign-In*
 
-### Dashboard with Bookmarks
-![Dashboard](https://via.placeholder.com/800x500?text=Bookmark+Dashboard)
+### Dashboard
+![Dashboard](docs/dashboard.png)
+*Clean, modern interface with real-time sync*
 
-### Real-time Sync Demo
-![Real-time Demo](https://via.placeholder.com/800x500?text=Real-time+Sync+Demo)
+### Add Bookmark
+![Add Bookmark](docs/add-bookmark.png)
+*Simple and intuitive bookmark creation*
 
-*(Add your own screenshots by replacing these placeholders)*
+*(Add your own screenshots to the `docs/` folder)*
+
+## 🎨 UI/UX Highlights
+
+- **Gradient backgrounds** — Modern indigo-to-purple color scheme
+- **Responsive design** — Works perfectly on mobile, tablet, and desktop
+- **Loading states** — Smooth spinners and transitions
+- **Interactive feedback** — Hover effects, shadows, and animations
+- **Accessible** — Semantic HTML and keyboard navigation support
+
+Test the app with your Google account. All data is private and isolated per user.
 
 ## ⚡ Real-time Demonstration
 
 To see real-time sync in action:
 
-1. Open the app in **two different browser tabs**
-2. Sign in with the **same Google account** in both tabs
+1. Open the app in **two different browser tabs** or devices
+2. Sign in with the **same Google account** in both
 3. Add a bookmark in Tab A
 4. Watch it **appear instantly** in Tab B without refreshing
 5. Delete a bookmark in Tab B
 6. Watch it **disappear** from Tab A
 
-![Real-time Sync](https://via.placeholder.com/800x300?text=Real-time+Sync+Animation)
+This is powered by **Supabase Realtime** subscriptions with PostgreSQL replication.
 
 ## 🏗️ Project Structure
 
@@ -177,6 +192,8 @@ NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 ```
 
+> **Important:** For production deployment on Vercel, add these variables in your Vercel project settings under Environment Variables.
+
 ### 6. Run Locally
 
 ```bash
@@ -187,46 +204,82 @@ Open [http://localhost:3000](http://localhost:3000)
 
 ### 7. Deploy to Vercel
 
+The easiest way to deploy is with [Vercel](https://vercel.com):
+
 ```bash
-npx vercel --prod
+# Install Vercel CLI
+npm i -g vercel
+
+# Login and deploy
+vercel --prod
 ```
 
-Add environment variables in Vercel dashboard:
-- `NEXT_PUBLIC_SUPABASE_URL`
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+During deployment, add these environment variables in Vercel dashboard:
 
-## 🐛 Problems Encountered & Solutions
+| Variable | Value |
+|----------|-------|
+| `NEXT_PUBLIC_SUPABASE_URL` | Your Supabase project URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Your Supabase anon key |
 
-### 1. Authentication Session Persistence
+#### Production URL
+**App:** https://bookmark-manager-inky.vercel.app  
+**Repo:** https://github.com/Aazen45v/bookmark-manager
 
-**Problem:** After Google OAuth redirect, sessions weren't persisting properly.
+## 🐛 Troubleshooting & Solutions
 
-**Solution:** Implemented Supabase SSR with custom middleware that refreshes sessions using `exchangeCodeForSession()` in the auth callback route.
+### 1. Authentication Redirect Loop
 
-### 2. Real-time Updates Not Working
+**Problem:** After Google login, app redirects to localhost instead of production URL.
 
-**Problem:** Bookmarks didn't sync across tabs.
+**Solution:**
+1. Go to Supabase Dashboard → **Settings** → **Site URL**
+2. Add your production URL: `https://bookmark-manager-inky.vercel.app`
+3. Go to Google Cloud Console → **Credentials** → Your OAuth Client
+4. Add authorized redirect URI:
+   ```
+   https://bookmark-manager-inky.vercel.app/auth/callback
+   ```
+5. Redeploy to Vercel
 
-**Solution:** 
+### 2. Authentication Session Persistence
+
+**Problem:** User gets logged out on page refresh.
+
+**Solution:** Implemented Supabase SSR with custom middleware that refreshes sessions using `exchangeCodeForSession()` in the auth callback route (`src/app/auth/callback/route.ts`).
+
+### 3. Real-time Updates Not Working
+
+**Problem:** Bookmarks don't sync across tabs.
+
+**Solution:**
 - Added Supabase channel subscription with `postgres_changes` event listener
-- Applied RLS filters (`user_id=eq.${user.id}`) for security
-- Enabled table replication in Supabase dashboard
+- Applied RLS filters (`user_id=eq.${user.id}`) for security and targeting
+- Enabled table replication in Supabase Dashboard: **Database** → **Replication** → Enable `bookmarks` table
 
-### 3. Next.js 15+ cookies() API Changes
+### 4. Next.js 15+ cookies() API Changes
 
-**Problem:** TypeScript errors with `cookies()` being async.
+**Problem:** TypeScript errors - `Property 'get' does not exist on type 'Promise<ReadonlyRequestCookies>'`
 
-**Solution:** 
-- Added `await` before `cookies()` calls
-- Updated `createClient()` to be async in `supabase-server.ts`
+**Solution:**
+- Added `await` before `cookies()` calls in `src/lib/supabase-server.ts`
+- Updated `createClient()` to be an async function
 
-### 4. OAuth Redirect URL Mismatch
+### 5. OAuth Redirect URL Mismatch
 
-**Problem:** Google Auth redirect URI didn't match.
+**Problem:** Google Auth fails with redirect URI error.
 
-**Solution:** 
-- Used exact format: `https://[project-ref].supabase.co/auth/v1/callback`
-- Added this exact URL in Google Cloud Console credentials
+**Solution:**
+- Supabase expects: `https://[project-ref].supabase.co/auth/v1/callback`
+- Google Cloud Console needs the exact same URL in authorized redirect URIs
+
+### 6. Build Errors on Vercel
+
+**Problem:** Build fails with missing environment variables.
+
+**Solution:** Ensure all environment variables are added in Vercel project settings:
+- Go to Vercel Dashboard → Project → **Settings** → **Environment Variables**
+- Add `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- Select all environments (Production, Preview, Development)
 
 ## 📝 API Reference
 
