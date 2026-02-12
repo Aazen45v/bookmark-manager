@@ -7,18 +7,13 @@ export async function GET(request: Request) {
   const next = searchParams.get('next') ?? '/'
 
   if (code) {
-    try {
-      const supabase = await createClient()
-      const { error } = await supabase.auth.exchangeCodeForSession(code)
-      
-      if (!error) {
-        return NextResponse.redirect(`${origin}${next}`)
-      }
-    } catch (err) {
-      console.error('Auth error:', err)
+    const supabase = await createClient()
+    const { error } = await supabase.auth.exchangeCodeForSession(code)
+    
+    if (!error) {
+      return NextResponse.redirect(`${origin}${next}`)
     }
   }
 
-  // Redirect to home with error
-  return NextResponse.redirect(`${origin}/?auth_error=true`)
+  return NextResponse.redirect(`${origin}/?error=auth_failed`)
 }
