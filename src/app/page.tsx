@@ -8,7 +8,6 @@ interface Bookmark {
   user_id: string
   url: string
   title: string
-  created_at: string
 }
 
 export default function Home() {
@@ -21,84 +20,53 @@ export default function Home() {
   const supabase = createClient()
 
   useEffect(() => {
-    const init = async () => {
+    const checkAuth = async () => {
       const { data: { user } } = await supabase.auth.getUser()
       setUser(user)
-      if (user) {
-        await fetchBookmarks(user.id)
-      }
       setLoading(false)
-    }
-    init()
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      const currentUser = session?.user
-      setUser(currentUser)
-      if (currentUser) {
-        await fetchBookmarks(currentUser.id)
-      } else {
-        setBookmarks([])
+      
+      if (user) {
+        const { data } = await supabase
+          .from('bookmarks')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+        setBookmarks(data || [])
       }
-    })
-    return () => subscription.unsubscribe()
+    }
+    checkAuth()
   }, [])
 
   useEffect(() => {
     if (!user) return
     const channel = supabase
-      .channel('bookmarks_changes')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'bookmarks', filter: `user_id=eq.${user.id}` },
-        (payload) => {
-          if (payload.eventType === 'INSERT') {
-            setBookmarks((prev) => [payload.new as Bookmark, ...prev])
-          } else if (payload.eventType === 'DELETE') {
-            setBookmarks((prev) => prev.filter((b) => b.id !== payload.old.id))
-          }
+      .channel('bm')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'bookmarks', filter: `user_id=eq.${user.id}` }, (payload) => {
+        if (payload.eventType === 'INSERT') {
+          setBookmarks(prev => [payload.new as Bookmark, ...prev])
+        } else if (payload.eventType === 'DELETE') {
+          setBookmarks(prev => prev.filter(b => b.id !== payload.old.id))
         }
-      )
+      })
       .subscribe()
     return () => { supabase.removeChannel(channel) }
   }, [user])
 
-  const fetchBookmarks = async (userId: string) => {
-    const { data, error } = await supabase
-      .from('bookmarks')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false })
-    if (!error && data) setBookmarks(data)
-  }
-
-  const handleLogin = async () => {
-    await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: { redirectTo: `${window.location.origin}/` },
-    })
-  }
-
-  const handleLogout = async () => {
-    await supabase.auth.signOut()
-  }
-
-  const handleAddBookmark = async (e: React.FormEvent) => {
+  const addBookmark = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!user || !url) return
     setSubmitting(true)
-    const { error } = await supabase.from('bookmarks').insert({
-      user_id: user.id,
-      url,
-      title: title || url,
-    })
-    if (!error) {
-      setUrl('')
-      setTitle('')
-    }
+    await supabase.from('bookmarks').insert({ user_id: user.id, url, title: title || url })
+    setUrl('')
+    setTitle('')
     setSubmitting(false)
   }
 
-  const handleDelete = async (id: string) => {
-    await supabase.from('bookmarks').delete().eq('id', id)
+  const deleteBookmark = async (id: string) => {
+    const { error } = await supabase.from('bookmarks').delete().eq('id', id)
+    if (!error) {
+      setBookmarks(prev => prev.filter(b => b.id !== id))
+    }
   }
 
   if (loading) {
@@ -116,7 +84,6 @@ export default function Home() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50 via-white to-purple-50">
         <div className="w-full max-w-md">
-          {/* Logo/Header */}
           <div className="text-center mb-8">
             <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl shadow-lg mb-4">
               <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -124,10 +91,9 @@ export default function Home() {
               </svg>
             </div>
             <h1 className="text-3xl font-bold text-gray-900 mb-2">Bookmark Manager</h1>
-            <p className="text-gray-500">Save, organize, and sync your bookmarks across all devices</p>
+            <p className="text-gray-500">Save, organize, and sync your bookmarks</p>
           </div>
 
-          {/* Login Card */}
           <div className="bg-white rounded-2xl shadow-xl shadow-indigo-100/50 p-8 border border-gray-100">
             <div className="space-y-6">
               <div className="flex items-start gap-3 p-4 bg-indigo-50 rounded-xl">
@@ -136,7 +102,7 @@ export default function Home() {
                 </svg>
                 <div>
                   <h3 className="font-semibold text-gray-900">Google Sign-In Only</h3>
-                  <p className="text-sm text-gray-600 mt-1">We use Google for secure authentication. No passwords to remember.</p>
+                  <p className="text-sm text-gray-600 mt-1">Secure authentication with your Google account.</p>
                 </div>
               </div>
 
@@ -151,18 +117,18 @@ export default function Home() {
                   <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
-                  <span>Real-time Sync Across Devices</span>
+                  <span>Real-time Sync</span>
                 </div>
                 <div className="flex items-center gap-3 text-sm text-gray-600">
                   <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
-                  <span>Free Forever</span>
+                  <span>Works on All Devices</span>
                 </div>
               </div>
 
               <button
-                onClick={handleLogin}
+                onClick={() => supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: `${location.origin}/auth/callback` } })}
                 className="w-full flex items-center justify-center gap-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold py-4 px-6 rounded-xl transition-all duration-200 shadow-lg shadow-indigo-200 hover:shadow-indigo-300 transform hover:-translate-y-0.5"
               >
                 <svg className="w-5 h-5" viewBox="0 0 24 24">
@@ -173,17 +139,10 @@ export default function Home() {
                 </svg>
                 Continue with Google
               </button>
-
-              <p className="text-center text-sm text-gray-500">
-                By continuing, you agree to our Terms of Service
-              </p>
             </div>
           </div>
 
-          {/* Footer */}
-          <p className="text-center text-sm text-gray-400 mt-8">
-            Trusted by developers worldwide
-          </p>
+          <p className="text-center text-sm text-gray-400 mt-8">Trusted by developers worldwide</p>
         </div>
       </div>
     )
@@ -191,7 +150,6 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50">
-      {/* Header */}
       <header className="bg-white/80 backdrop-blur-md border-b border-gray-100 sticky top-0 z-10">
         <div className="max-w-4xl mx-auto px-4 py-4 flex justify-between items-center">
           <div className="flex items-center gap-3">
@@ -203,16 +161,16 @@ export default function Home() {
             <h1 className="text-lg font-bold text-gray-900">My Bookmarks</h1>
           </div>
           <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
-              <img 
-                src={user.user_metadata?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.email)}&background=6366f1&color=fff`} 
-                alt="Avatar"
-                className="w-8 h-8 rounded-full"
-              />
-              <span className="text-sm text-gray-600 hidden sm:inline">{user.user_metadata?.full_name || user.email}</span>
-            </div>
+            <img 
+              src={user.user_metadata?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.email)}&background=6366f1&color=fff`} 
+              alt="Avatar"
+              className="w-8 h-8 rounded-full"
+            />
             <button
-              onClick={handleLogout}
+              onClick={async () => {
+                await supabase.auth.signOut()
+                window.location.reload()
+              }}
               className="text-sm text-gray-500 hover:text-red-600 transition-colors"
             >
               Sign out
@@ -221,26 +179,24 @@ export default function Home() {
         </div>
       </header>
 
-      {/* Main Content */}
       <main className="max-w-4xl mx-auto px-4 py-8">
-        {/* Add Bookmark Form */}
-        <form onSubmit={handleAddBookmark} className="mb-8 bg-white rounded-2xl shadow-lg shadow-indigo-100/50 p-6 border border-gray-100">
+        <form onSubmit={addBookmark} className="mb-8 bg-white rounded-2xl shadow-lg shadow-indigo-100/50 p-6 border border-gray-100">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Add New Bookmark</h2>
           <div className="flex flex-col gap-4 sm:flex-row">
             <input
               type="url"
               placeholder="https://example.com"
               value={url}
-              onChange={(e) => setUrl(e.target.value)}
+              onChange={e => setUrl(e.target.value)}
               required
-              className="flex-1 px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+              className="flex-1 px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all text-gray-900 placeholder-gray-400"
             />
             <input
               type="text"
               placeholder="Title (optional)"
               value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              className="flex-1 px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all sm:w-48"
+              onChange={e => setTitle(e.target.value)}
+              className="flex-1 px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all text-gray-900 placeholder-gray-400 sm:w-48"
             />
             <button
               type="submit"
@@ -252,7 +208,6 @@ export default function Home() {
           </div>
         </form>
 
-        {/* Bookmark List */}
         <div className="space-y-3">
           {bookmarks.length === 0 ? (
             <div className="text-center py-16 bg-white rounded-2xl shadow border border-gray-100">
@@ -265,7 +220,7 @@ export default function Home() {
               <p className="text-sm text-gray-400 mt-1">Add your first bookmark above!</p>
             </div>
           ) : (
-            bookmarks.map((bookmark) => (
+            bookmarks.map(bookmark => (
               <div
                 key={bookmark.id}
                 className="bg-white p-5 rounded-xl shadow-md hover:shadow-lg transition-all duration-200 group flex items-center justify-between border border-gray-100"
@@ -289,7 +244,7 @@ export default function Home() {
                   </div>
                 </div>
                 <button
-                  onClick={() => handleDelete(bookmark.id)}
+                  onClick={() => deleteBookmark(bookmark.id)}
                   className="ml-4 p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
                   title="Delete bookmark"
                 >
@@ -302,7 +257,6 @@ export default function Home() {
           )}
         </div>
 
-        {/* Stats */}
         {bookmarks.length > 0 && (
           <div className="mt-6 text-center text-sm text-gray-500">
             {bookmarks.length} bookmark{bookmarks.length !== 1 ? 's' : ''} saved

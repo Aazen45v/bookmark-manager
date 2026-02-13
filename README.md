@@ -17,6 +17,14 @@ A modern, real-time bookmark manager built with Next.js 15, Supabase, and Tailwi
 
 **[https://bookmark-manager-inky.vercel.app](https://bookmark-manager-inky.vercel.app)**
 
+## 🔗 Project Links
+
+| Service | URL |
+|---------|-----|
+| **Production App** | https://bookmark-manager-inky.vercel.app |
+| **GitHub Repository** | https://github.com/Aazen45v/bookmark-manager |
+| **Supabase Project** | https://supabase.com/dashboard/project/tnqahabqivagmnoiyskk |
+
 ## 🛠️ Tech Stack
 
 | Technology | Version | Purpose |
@@ -218,12 +226,13 @@ During deployment, add these environment variables in Vercel dashboard:
 
 | Variable | Value |
 |----------|-------|
-| `NEXT_PUBLIC_SUPABASE_URL` | Your Supabase project URL |
+| `NEXT_PUBLIC_SUPABASE_URL` | https://tnqahabqivagmnoiyskk.supabase.co |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Your Supabase anon key |
 
 #### Production URL
 **App:** https://bookmark-manager-inky.vercel.app  
-**Repo:** https://github.com/Aazen45v/bookmark-manager
+**Repo:** https://github.com/Aazen45v/bookmark-manager  
+**Supabase Project ID:** tnqahabqivagmnoiyskk
 
 ## 🐛 Troubleshooting & Solutions
 
